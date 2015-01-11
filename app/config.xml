@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+  <widget xmlns   = "http://www.w3.org/ns/widgets"
+      xmlns:gap   = "http://phonegap.com/ns/1.0"
+      id          = "org.erosson.swarmsim"
+      versionCode = "1" 
+      version     = "0.0.1" >
+
+  <name>Swarm Simulator</name>
+
+  <description>
+    An incremental game. Starting with just a few larvae and a small pile of meat, grow a massive swarm of giant bugs.
+  </description>
+
+  <author href="http://github.com/erosson/swarm" email="swarmsim@erosson.org">
+    Evan Rosson
+  </author>
+
+  <gap:platform name="android" />
+</widget>
