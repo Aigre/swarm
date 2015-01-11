@@ -2,6 +2,7 @@
   <!-- phonegap config. -->
   <widget xmlns   = "http://www.w3.org/ns/widgets"
       xmlns:gap   = "http://phonegap.com/ns/1.0"
+      xmlns:android   = "http://schemas.android.com/apk/res/android"
       id          = "org.erosson.swarmsim"
       versionCode = "1" 
       version     = "0.0.1" >
@@ -19,8 +20,8 @@
   <!-- open reddit in the device's real browser. http://stackoverflow.com/questions/14070841/phonegap-open-link-in-browser -->
   <access origin="http://127.0.0.1*" />
 
-  <!--icon src="images/swarmsim-icon.png" />
-  <gap:splash src="images/swarmsim-icon.png" /-->
+  <icon src="images/swarmsim-icon.png" />
+  <gap:splash src="images/swarmsim-icon.png" />
 
   <gap:platform name="android" />
   <!-- http://stackoverflow.com/questions/8697295/are-all-those-permissions-needed-by-phonegap-on-android -->
