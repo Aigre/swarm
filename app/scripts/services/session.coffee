@@ -111,6 +111,9 @@ angular.module('swarmApp').factory 'session', ($rootScope, $log, util, version, 
       for key, val of ret.date
         ret.date[key] = new Date val
       ret.date.loaded = new Date()
+      # "special case" all unittypes and upgrades as bignums. This is the most common case, but not the default.
+      for key, val of ret.unittype
+        ret.unittype[key] = math.bignumber val
       # check save version for validity
       @_validateSaveVersion ret.version?.started
       return ret

@@ -81,7 +81,7 @@ angular.module('swarmApp').factory 'effecttypes', (EffectType, EffectTypes, util
     onBuy: (effect, game) ->
       effect.unit._addCount @output effect, game
     output: (effect, game) ->
-      effect.unit.velocity() * effect.val * effect.power()
+      math.eval 'v * val * power', v:effect.unit.velocity(), val:effect.val, power:effect.power()
   effecttypes.register
     name: 'addUnitRand'
     onBuy: (effect, game, parent, level) ->
@@ -93,7 +93,7 @@ angular.module('swarmApp').factory 'effecttypes', (EffectType, EffectTypes, util
       level = effect.parent.count()
       minlevel = effect.parentStat 'random.minlevel'
       #console.log 'addunitrand output', level, minlevel, level >= minlevel
-      if level >= minlevel
+      if math.eval 'level >= minlevel', {level:level, minlevel:minlevel}
         stat_each = effect.parentStat 'random.each', 1
         # chance of any unit spawning at all. base chance set in spreadsheet with statinit.
         prob = effect.parentStat 'random.freq'
@@ -101,39 +101,40 @@ angular.module('swarmApp').factory 'effecttypes', (EffectType, EffectTypes, util
         minqty = 0.8
         maxqty = 1.2
         qtyfactor = effect.val
-        baseqty = stat_each * Math.pow qtyfactor, level - minlevel
+        baseqty = math.eval 'each * (factor ^ (level - minlevel))',
+          each:stat_each, factor:qtyfactor, level:level, minlevel:minlevel
         # consistent random seed. No savestate scumming.
         seed = "[#{effect.parent.name}, #{level}]"
         rng = seedrand.rng seed
         # at exactly minlevel, a free spawn is guaranteed, no random roll
         roll = rng()
-        isspawned = level == minlevel or roll < prob
+        isspawned = math.eval('level == minlevel',level:level,minlevel:minlevel) or roll < prob
         #$log.debug 'roll to spawn: ', level, roll, prob, isspawned
         roll2 = rng()
         modqty = minqty + (roll2 * (maxqty - minqty))
-        qty = Math.ceil baseqty * modqty
+        qty = math.eval 'ceil(base, mod)', base:baseqty, mod:modqty
         #$log.debug 'spawned. roll for quantity: ', {level:level, roll:roll2, modqty:modqty, baseqty:baseqty, qtyfactor:qtyfactor, qty:qty, stat_each:stat_each}
         return spawned:isspawned, baseqty:baseqty, qty:qty
-      return spawned:false, baseqty:0, qty:0
+      return spawned:false, baseqty:math.bignumber(0), qty:math.bignumber(0)
   effecttypes.register
     name: 'compoundUnit'
     bank: (effect, game) ->
       base = effect.unit.count()
       if effect.unit2?
-        base += effect.unit2.count()
+        base = math.eval 'base + unit2', base:base, unit2:effect.unit2.count()
       return base
     cap: (effect, game) ->
       if effect.val2 == '' or not effect.val2?
         return undefined
       velocity = effect.unit.velocity()
       if effect.unit2?
-        velocity += effect.unit2.velocity()
-      return effect.val2 * velocity * effect.power()
+        velocity = math.eval 'v1 + v2', v1:velocity, v2:effect.unit2.velocity()
+      return math.eval 'capfactor * v * power', capfactor:effect.val2, v:velocity, power:effect.power()
     output: (effect, game) ->
       base = @bank effect, game
-      ret = base * (effect.val - 1)
+      ret = math.eval 'base * (effect - 1)', base:base, effect:effect.val
       if (cap = @cap effect, game)?
-        ret = Math.min ret, cap
+        ret = math.min ret, cap
       return ret
     onBuy: (effect, game) ->
       effect.unit._addCount @output effect, game

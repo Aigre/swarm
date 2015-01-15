@@ -29,14 +29,14 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
       ret = 0
     return ret
   _setCount: (val) ->
-    @game.session.upgrades[@name] = val
+    @game.session.upgrades[@name] = math.bignumber val
     util.clearMemoCache @_totalCost, @unit._stats, @unit._eachCost
     for u in @unit.upgrades.list
       util.clearMemoCache u._totalCost
   _addCount: (val) ->
-    @_setCount @count() + val
+    @_setCount math.eval 'count + val', count:@count(), val:val
   _subtractCount: (val) ->
-    @_addCount -val
+    @_addCount math.eval '-1 * val', val:val
 
   isVisible: ->
     # disabled: hack for larvae/showparent. We really need to just remove showparent already...
@@ -53,7 +53,7 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     if @count() > 0
       return true
     for require in @requires
-      if require.val > require.unit.count()
+      if math.eval 'required > count', {required:require.val, count:require.unit.count()}
         return false
     return true
   # TODO refactor cost/buyable to share code with unit?
@@ -62,7 +62,8 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     fakelevels = @unit.stat 'upgradecost', 0
     _.map @cost, (cost) =>
       total = _.clone cost
-      total.val *= Math.pow total.factor, count + fakelevels
+      total.val = math.eval 'total * (factor ^ (count + fakelevels))',
+        total:total.val, factor:total.factor, count:count, fakelevels:fakelevels
       return total
   sumCost: (num, startCount) ->
     costs0 = @_totalCost startCount
@@ -70,10 +71,11 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
       cost = _.clone cost0
       # special case: 1 / (1 - 1) == boom
       if cost.factor == 1
-        cost.val *= num
+        cost.val = math.eval 'cost * num', cost:cost.val, num:num
       else
         # see maxCostMet for O(1) summation formula derivation.
-        cost.val *= (1 - Math.pow cost.factor, num) / (1 - cost.factor)
+        cost.val = math.eval 'cost * (1 - factor ^ num) / (1 - factor)',
+          cost:cost.val, factor:cost.factor, num:num
       return cost
   isCostMet: ->
     return @maxCostMet() > 0
@@ -89,37 +91,38 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     # have just brute forced this, we don't have that many upgrades so O(1)
     # math really doesn't matter. Yet I did it anyway. Do as I say, not as I
     # do, kids.
-    max = @type.maxlevel or Number.MAX_VALUE
+    max = @type.maxlevel or Infinity
     for cost in @totalCost()
-      util.assert cost.val > 0, 'upgrade cost <= 0', @name, this
+      util.assert math.eval('cost > 0', cost:cost.val), 'upgrade cost <= 0', @name, this
       if cost.factor == 1 #special case: math.log(1) == 0; x / math.log(1) == boom
-        m = cost.unit.count() / cost.val
+        m = math.eval 'count / cost', count:cost.unit.count(), cost:cost.val
       else
-        m = Math.log(1 - (cost.unit.count() * percent) * (1 - cost.factor) / cost.val) / Math.log cost.factor
-      max = Math.min max, m
+        m = math.eval 'log(1 - (count * percent * (1 - factor) / cost)) / log(factor)',
+          count:cost.unit.count(), percent:percent, factor:cost.factor, cost:cost.val
+      max = math.min max, m
       #$log.debug 'iscostmet', @name, cost.unit.name, m, max, cost.unit.count(), cost.val
-    return Math.floor max
+    return math.floor max
 
   costMetPercent: ->
     costOfMet = _.indexBy @sumCost(@maxCostMet()), (c) -> c.unit.name
-    max = Number.MAX_VALUE
-    if @type.maxlevel? and @maxCostMet() + 1 > @type.maxlevel
+    max = Infinity
+    if @type.maxlevel? and math.eval 'maxcost + 1 > maxlevel', {maxcost:@maxCostMet(), maxlevel:@type.maxlevel}
       return 1
-    for cost in @sumCost @maxCostMet() + 1
-      count = cost.unit.count() - costOfMet[cost.unit.name].val
-      val = cost.val - costOfMet[cost.unit.name].val
-      max = Math.min max, (count / val)
+    for cost in @sumCost math.eval 'maxcost + 1', {maxcost:@maxCostMet()}
+      count = math.eval 'count - costmet', count:cost.unit.count(), costmet:costOfMet[cost.unit.name].val
+      val = math.eval 'cost - costmet', cost:cost.val, costmet:costOfMet[cost.unit.name].val
+      max = math.eval 'min(max, count/val)', max:max, count:count, val:val
     return Math.min 1, Math.max 0, max
 
   # TODO merge with costMetPercent
   estimateSecs: ->
     costOfMet = _.indexBy @sumCost(@maxCostMet()), (c) -> c.unit.name
     max = {val:0, unit:null}
-    if @type.maxlevel? and @maxCostMet() + 1 > @type.maxlevel
+    if @type.maxlevel? and math.eval 'costmet + 1 > maxlevel', {costmet:@maxCostMet(), maxlevel:@type.maxlevel}
       return 0
-    for cost in @sumCost @maxCostMet() + 1
+    for cost in @sumCost math.eval 'costmet + 1', {costmet:@maxCostMet()}
       secs = cost.unit.estimateSecs cost.val
-      if max.val < secs
+      if math.eval 'max < secs', {max:max.val, secs:secs}
         max = {val:secs, unit:cost.unit}
     return max
 
@@ -150,14 +153,14 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     $log.debug 'buy', @name, num
     @game.withSave =>
       for cost in @sumCost num
-        util.assert cost.unit.count() >= cost.val, "tried to buy more than we can afford. upgrade.maxCostMet is broken!", @name, name, cost
-        util.assert cost.val > 0, "zero cost from sumCost, yet cost was met?", @name, name, cost
+        util.assert math.eval('count >= cost', count:cost.unit.count(), cost:cost.val), "tried to buy more than we can afford. upgrade.maxCostMet is broken!", @name, name, cost
+        util.assert math.eval('cost > 0', cost:cost.val), "zero cost from sumCost, yet cost was met?", @name, name, cost
         cost.unit._subtractCount cost.val
       count = @count()
       @_addCount num
       for i in [0...num]
         for effect in @effect
-          effect.onBuy count + i + 1
+          effect.onBuy math.eval 'count + i + 1', count:count, i:i
       @viewNewUpgrades()
       return num
 

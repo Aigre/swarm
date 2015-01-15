@@ -19,16 +19,17 @@ angular.module('swarmApp').factory 'bignumFormatter', (options) ->
         return num
       if num < floorlimit
         return num.toPrecision(opts.sigfigs).replace /\.?0+$/, ''
-      num = Math.floor num
+      num = math.floor num
       if num < opts.minsuffix
         # sadly, num.toLocaleString() does not work in unittests. node vs browser?
         # toLocaleString would be nice for foreign users, but my unittests are
         # more important, sorry. Maybe later.
-        return numeral(num).format '0,0'
+        # valueOf is safe for bignums because we just did a bounds-check in the if.
+        return numeral(num.valueOf()).format '0,0'
       # nope. Numeral only supports up to trillions, so have to do this myself :(
       # return numeral(num).format '0.[00]a'
       # http://mathforum.org/library/drmath/view/59154.html
-      index = Math.floor Math.log(num) / Math.log 1000
+      index = math.eval 'floor(log(num) / log(1000))', num:num
       # so hacky
       if options.notation() == 'hybrid'
         suffixes = suffixes.slice 0, 12

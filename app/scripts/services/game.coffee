@@ -225,15 +225,15 @@ angular.module('swarmApp').factory 'Game', (unittypes, upgradetypes, achievement
     return energy.spent()
   ascendCost: ->
     spent = @ascendEnergySpent()
-    return Math.ceil 999999 / (1 + spent/50000)
+    return math.eval 'ceil(999999 / (1 + spent/50000))', spent:spent
   ascendCostCapDiff: ->
-    return @ascendCost() - @unit('energy').capValue()
+    return math.eval 'cost/cap', cost:@ascendCost(), cap:@unit('energy').capValue()
   ascendCostPercent: ->
-    @unit('energy').count() / @ascendCost()
+    return math.eval 'energy/cost', energy:@unit('energy').count(), cost:@ascendCost()
   ascendCostDurationSecs: ->
     energy = @unit 'energy'
     cost = @ascendCost()
-    if cost <= energy.capValue()
+    if math.eval 'cost <= cap', {cost:cost, cap:energy.capValue()}
       return energy.estimateSecs cost
   ascendCostDurationMoment: ->
     if (secs=@ascendCostDurationSecs())?
