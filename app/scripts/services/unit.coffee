@@ -69,7 +69,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
         prodlink = prodlink[0]
         parent:parent
         child:child
-        prod:prod
+        prod:prodlink
 
   rawCount: ->
     ret = @game.session.unittypes[@name] ? 0
@@ -121,8 +121,11 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
   capValue: (val) ->
     cap = @_getCap()
     if not cap?
-      # uncapped
-      return val
+      # if both are undefined, prefer undefined to NaN, mostly for legacy
+      if not val?
+        return val
+      # "uncapped" - still capped, below the JS max of 1e307 or so.
+      return Math.min val, 1e+300
     if not val?
       # no value supplied - return just the cap
       return cap
@@ -179,7 +182,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     return ret
 
   _costMetPercent: ->
-    max = Number.MAX_VALUE
+    max = Infinity
     for cost in @eachCost()
       if math.eval 'cost > 0', {cost:cost.val}
         max = math.eval 'min(max, count/cost)', max:max, count:cost.unit.count(), cost:cost.val

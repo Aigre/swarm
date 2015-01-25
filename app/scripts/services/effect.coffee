@@ -85,12 +85,11 @@ angular.module('swarmApp').factory 'effecttypes', (EffectType, EffectTypes, util
   effecttypes.register
     name: 'addUnitRand'
     onBuy: (effect, game, parent, level) ->
-      out = @output effect, game
+      out = @output effect, game, parent, level
       if out.spawned
         effect.unit._addCount out.qty
-    output: (effect, game) ->
+    output: (effect, game, parent=effect.parent, level=parent.count()) ->
       # minimum level needed to spawn units. Also, guarantees a spawn at exactly this level.
-      level = effect.parent.count()
       minlevel = effect.parentStat 'random.minlevel'
       #console.log 'addunitrand output', level, minlevel, level >= minlevel
       if math.eval 'level >= minlevel', {level:level, minlevel:minlevel}
@@ -98,11 +97,11 @@ angular.module('swarmApp').factory 'effecttypes', (EffectType, EffectTypes, util
         # chance of any unit spawning at all. base chance set in spreadsheet with statinit.
         prob = effect.parentStat 'random.freq'
         # quantity of units spawned, if any spawn at all.
-        minqty = 0.8
-        maxqty = 1.2
+        minqty = 0.9
+        maxqty = 1.1
         qtyfactor = effect.val
-        baseqty = math.eval 'each * (factor ^ (level - minlevel))',
-          each:stat_each, factor:qtyfactor, level:level, minlevel:minlevel
+        baseqty = math.eval 'each * (factor ^ level)',
+          each:stat_each, factor:qtyfactor, level:level
         # consistent random seed. No savestate scumming.
         seed = "[#{effect.parent.name}, #{level}]"
         rng = seedrand.rng seed

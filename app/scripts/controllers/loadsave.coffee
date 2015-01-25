@@ -9,7 +9,7 @@
  #
  # Loads a saved game upon refresh. If it fails, complain loudly and give the player a chance to recover their broken save.
 ###
-angular.module('swarmApp').controller 'LoadSaveCtrl', ($scope, $log, game, session, version, $location) ->
+angular.module('swarmApp').controller 'LoadSaveCtrl', ($scope, $log, game, session, version, $location, backfill) ->
   $scope.form = {}
 
   # http://stackoverflow.com/questions/14995884/select-text-on-input-focus-in-angular-js
@@ -48,10 +48,4 @@ angular.module('swarmApp').controller 'LoadSaveCtrl', ($scope, $log, game, sessi
     game.importSave savedata, true
     $log.info 'loading game from url successful!'
 
-  # hacky 0.2.11 fix. TODO remove
-  for i in [1..5]
-    $log.debug 'nexusfix', i, game.upgrade("nexus#{i}").count(), game.unit('nexus').count()
-    if game.upgrade("nexus#{i}").count() > 0 and game.unit('nexus').count() < i
-      $log.info 'fixed nexus count', i
-      game.unit('nexus')._setCount i
-
+  backfill.run game

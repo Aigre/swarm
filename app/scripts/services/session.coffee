@@ -98,6 +98,11 @@ angular.module('swarmApp').factory 'session', ($rootScope, $log, util, version, 
       #if sM > gM or (sM == gM and (sm > gm or (sm == gm and sp > gp)))
       #  throw new Error "save version newer than game version: #{saveversion} > #{gameversion}"
 
+      # coffeescript: two-dot range is inclusive
+      blacklisted = ('1.0.0-publictest'+i for i in [0..8])
+      if _.contains blacklisted, saveversion
+        throw new Error 'blacklisted save version'
+
     _loads: (encoded) ->
       #encoded = atob encoded
       [saveversion, encoded] = @_splitVersionHeader encoded
@@ -116,6 +121,7 @@ angular.module('swarmApp').factory 'session', ($rootScope, $log, util, version, 
         ret.unittype[key] = math.bignumber val
       # check save version for validity
       @_validateSaveVersion ret.version?.started
+      ret.id = env.saveId
       return ret
 
     exportSave: ->

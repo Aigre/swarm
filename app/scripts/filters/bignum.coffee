@@ -152,3 +152,6 @@ angular.module('swarmApp').filter 'longnum', (bignumFormatter) ->
                    ' unoctogintillion'
                    ' duooctogintillion'
                    ], {sigfigs:6, minsuffix:1e6}
+
+angular.module('swarmApp').filter 'ceil', ->
+  (num) -> Math.ceil num

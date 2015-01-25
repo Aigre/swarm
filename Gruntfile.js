@@ -38,14 +38,14 @@ module.exports = function (grunt) {
       publictest: {
         options: {
           branch: 'master',
-          repo: 'https://github.com/swarmsim-publictest/swarmsim-publictest.github.io.git'
+          repo: 'git@github.com:swarmsim-publictest/swarmsim-publictest.github.io.git'
         },
         src: ['**']
       },
       prod: {
         options: {
           branch: 'master',
-          repo: 'https://github.com/swarmsim/swarmsim.github.io.git'
+          repo: 'git@github.com:swarmsim/swarmsim.github.io.git'
         },
         src: ['**']
       }
@@ -85,7 +85,7 @@ module.exports = function (grunt) {
             httpsAllowInsecure: true,
             showSkipped: true,
             spreadsheetKey: 'v0.2',
-            saveId: 'v0.2',
+            saveId: 'publictest9',
             gaTrackingID: 'UA-53523462-3'
           }
         }
@@ -100,7 +100,7 @@ module.exports = function (grunt) {
             //gaTrackingID: 'UA-53523462-2'
             showSkipped: false,
             spreadsheetKey: 'v0.2',
-            saveId: 'v0.2',
+            saveId: 'publictest9',
             gaTrackingID: 'UA-53523462-1'
           }
         }

@@ -27,6 +27,9 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     if _.isNaN ret
       util.error "count is NaN! resetting to zero. #{@name}"
       ret = 0
+    # we shouldn't ever exceed maxlevel, but just in case...
+    if @type.maxlevel
+      ret = Math.min @type.maxlevel, ret
     return ret
   _setCount: (val) ->
     @game.session.upgrades[@name] = math.bignumber val
@@ -56,14 +59,12 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
       if math.eval 'required > count', {required:require.val, count:require.unit.count()}
         return false
     return true
-  # TODO refactor cost/buyable to share code with unit?
-  totalCost: -> @_totalCost @count()
-  _totalCost: (count=@count()) ->
-    fakelevels = @unit.stat 'upgradecost', 0
+  totalCost: -> @_totalCost @count() + @unit.stat 'upgradecost', 0
+  _totalCost: (count=@count() + @unit.stat 'upgradecost', 0)->
     _.map @cost, (cost) =>
       total = _.clone cost
-      total.val = math.eval 'total * (factor ^ (count + fakelevels))',
-        total:total.val, factor:total.factor, count:count, fakelevels:fakelevels
+      total.val = math.eval 'total * (factor ^ count))',
+        total:total.val, factor:total.factor, count:count
       return total
   sumCost: (num, startCount) ->
     costs0 = @_totalCost startCount
@@ -91,7 +92,10 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
     # have just brute forced this, we don't have that many upgrades so O(1)
     # math really doesn't matter. Yet I did it anyway. Do as I say, not as I
     # do, kids.
-    max = @type.maxlevel or Infinity
+    if @type.maxlevel
+      max = Math.eval 'max - count', max:@type.maxlevel, count: @count()
+    else
+      max = Infinity
     for cost in @totalCost()
       util.assert math.eval('cost > 0', cost:cost.val), 'upgrade cost <= 0', @name, this
       if cost.factor == 1 #special case: math.log(1) == 0; x / math.log(1) == boom
