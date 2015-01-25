@@ -78,7 +78,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
       ret = 0
     return math.bignumber ret
   _setCount: (val) ->
-    @game.session.unittypes[@name] = math.bignumber val
+    @game.session.unittypes[@name] = math.bignumber val ? 0
     util.clearMemoCache @_count, @_velocity, @_eachCost, @_stats
   _addCount: (val) ->
     @_setCount math.eval 'count + val', count:@rawCount(), val:val

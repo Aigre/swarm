@@ -86,3 +86,8 @@ angular.module('swarmApp').run (env, $location, $log) ->
 
 angular.module('swarmApp').run ($rootScope) ->
   $rootScope.floor = (val) -> Math.floor val
+
+angular.module('swarmApp').run ($rootScope) ->
+  math.config
+    number: 'bignumber'
+    precision: 20
