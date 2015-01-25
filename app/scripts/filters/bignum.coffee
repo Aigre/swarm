@@ -29,7 +29,7 @@ angular.module('swarmApp').factory 'bignumFormatter', (options) ->
       # nope. Numeral only supports up to trillions, so have to do this myself :(
       # return numeral(num).format '0.[00]a'
       # http://mathforum.org/library/drmath/view/59154.html
-      index = math.eval 'floor(log(num) / log(1000))', num:num
+      index = num.log().divide(math.decimal(1000).log()).floor()
       # so hacky
       if options.notation() == 'hybrid'
         suffixes = suffixes.slice 0, 12

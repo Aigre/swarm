@@ -81,9 +81,9 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     @game.session.unittypes[@name] = math.bignumber val ? 0
     util.clearMemoCache @_count, @_velocity, @_eachCost, @_stats
   _addCount: (val) ->
-    @_setCount math.eval 'count + val', count:@rawCount(), val:val
+    @_setCount @rawCount().plus(val)
   _subtractCount: (val) ->
-    @_addCount math.eval '-1 * val', val:val
+    @_addCount math.bignumber(val).times(-1)
 
   _gainsPath: (pathdata, secs) ->
     producerdata = pathdata[0]
@@ -95,13 +95,10 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     # Quantity of buildings along the path do not matter, they're calculated separately.
     bonus = math.bignumber 1
     for ancestordata in pathdata
-      bonus = math.eval 'bonus * (prod + parentbase) * parentprod',
-        bonus:bonus
-        prod:ancestordata.prod.val
-        parentbase:ancestordata.parent.stat 'base', 0
-        parentprod:ancestordata.parent.stat 'prod', 1
-    return math.eval 'count * bonus / c * (secs ^ gen)',
-      count:count, bonus:bonus, c:c, secs:secs, gen:gen
+      #bonus = math.eval 'bonus * (prod + parentbase) * parentprod',
+      bonus = bonus.times(ancestordata.parent.stat 'prod', 1).times(math.bignumber(ancestordata.prod.val).plus(ancestordata.parent.stat 'base', 1))
+    #return math.eval 'count * bonus / c * (secs ^ gen)',
+    return count.times(bonus).dividedBy(c).times(math.bignumber(secs).toPower(gen))
 
   # direct parents, not grandparents/etc. Drone is parent of meat; queen is parent of drone; queen is not parent of meat.
   _parents: ->
@@ -109,7 +106,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
 
   _getCap: ->
     if @hasStat 'capBase'
-      return math.eval 'base * capmult', base:@stat('capBase'), capmult: @stat 'capMult', 1
+      return math.bignumber(@stat('capBase')).times(@stat 'capMult', 1)
     #cap = 0
     #for capspec in @cap
     #  capval = capspec.val
@@ -125,7 +122,8 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
       if not val?
         return val
       # "uncapped" - still capped, below the JS max of 1e307 or so.
-      return Math.min val, 1e+300
+      # TODO removing this breaks something...
+      return Math.min val, 1e300
     if not val?
       # no value supplied - return just the cap
       return cap
@@ -133,7 +131,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
 
   capPercent: ->
     if (cap = @capValue())?
-      return math.eval 'count / cap', count:@count(), cap:cap
+      return math.divide(@count(), cap)
   capDurationSeconds: ->
     if (cap = @capValue())?
       return @estimateSecs cap
@@ -142,13 +140,13 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
       return moment.duration secs, 'seconds'
 
   estimateSecs: (goal) ->
-    remaining = math.eval 'goal - count', goal:goal, count:@count()
-    if math.eval 'remaining <= 0', {remaining:remaining}
+    remaining = math.subtract(goal, @count())
+    if remaining.lessThanOrEqualTo(0)
       return 0
     velocity = @velocity()
-    if math.eval 'velocity <= 0', {velocity:velocity}
+    if velocity.lessThanOrEqualTo(0)
       return Infinity
-    secs = math.eval 'r/v', r:remaining, v:velocity
+    secs = math.divide(remaining, velocity)
     # assume it's linear. TODO nonlinear estimation
     return secs
 
@@ -162,7 +160,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
   _countInSecsFromReified: (secs=0) ->
     count = @rawCount()
     for pathdata in @_producerPathData()
-      count = math.eval 'count + gains', count:count, gains:@_gainsPath pathdata, secs
+      count = math.add(count, @_gainsPath pathdata, secs)
     return @capValue count
 
   # All units that cost this unit.
@@ -172,21 +170,21 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     ret = math.bignumber 0
     for u in @game.unitlist()
       costeach = u.costByName[@name]?.val ? 0
-      ret = math.eval 'ret + (costeach * count)', ret:ret, costeach:costeach, count u.count()
+      ret = ret.plus(math.multiply(costeach, u.count()))
     for u in @game.upgradelist()
       if u.costByName[@name] and not ignores[u.name]?
         # cost for $count upgrades starting from level 1
         costs = u.sumCost u.count(), 0
         cost = _.find costs, (c) => c.unit.name == @name
-        ret = math.eval 'ret + cost', ret:ret, cost:cost?.val ? 0
+        ret = math.plus(ret, cost?.val ? 0)
     return ret
 
   _costMetPercent: ->
     max = Infinity
     for cost in @eachCost()
-      if math.eval 'cost > 0', {cost:cost.val}
-        max = math.eval 'min(max, count/cost)', max:max, count:cost.unit.count(), cost:cost.val
-    util.assert math.eval('max >= 0', max:max), "invalid unit cost max", @name
+      if math.bignumber(cost.val).greaterThan(0)
+        max = math.min(max, math.divide(cost.unit.count(), cost.val))
+    util.assert math.bignumber(max).greaterThanOrEqualTo(0), "invalid unit cost max", @name
     return max
 
   isVisible: ->
@@ -197,11 +195,11 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     return @_visible = @_isVisible()
 
   _isVisible: ->
-    if math.eval 'count > 0', {count:@count()}
+    if math.bignumber(@count()).greaterThan(0)
       return true
     util.assert @requires.length > 0, "unit without visibility requirements", @name
     for require in @requires
-      if math.eval 'required > count', {required:require.val, count:require.resource.count()}
+      if math.bignumber(require.val).greaterThan(require.resource.count())
         if require.op != 'OR' # most requirements are ANDed, any one failure fails them all
           return false
         # req-not-met for OR requirements: no-op
@@ -231,7 +229,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     @buy @maxCostMet percent
 
   twinMult: ->
-    math.eval '(1 + base) * mult', base:@stat('twinbase', 0), mult:@stat('twin', 1)
+    math.multiply(@stat('twin', 1), math.add(1, @stat('twinbase', 0)))
   buy: (num=1) ->
     if not @isCostMet()
       throw new Error "We require more resources"
@@ -240,8 +238,8 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     num = Math.min num, @maxCostMet()
     @game.withSave =>
       for cost in @eachCost()
-        cost.unit._subtractCount math.eval 'cost * num', cost:cost.val, num:num
-      twinnum = math.eval 'num * twins', num:num, twins:@twinMult()
+        cost.unit._subtractCount math.multiply(cost.val, num)
+      twinnum = math.multiply(num, @twinMult())
       @_addCount twinnum
       return {num:num, twinnum:twinnum}
 
@@ -258,14 +256,13 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     ret = {}
     count = @count()
     for key, val of @eachProduction()
-      ret[key] = math.eval 'each * count', each:val, count:count
+      ret[key] = math.multiply(val, count)
     return ret
 
   eachProduction: ->
     ret = {}
     for prod in @prod
-      ret[prod.unit.unittype.name] = math.eval '(prod + base) * mult',
-        prod:prod.val, base:@stat('base', 0), mult:@stat('prod', 1)
+      ret[prod.unit.unittype.name] = math.multiply(@stat('prod', 1), math.add(prod.val, @stat('base', 0)))
     return ret
 
   eachCost: -> @_eachCost @game.now.getTime()
@@ -273,10 +270,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     util.clearMemoCache @_eachCost # store only the most recent
     _.map @cost, (cost) =>
       cost = _.clone cost
-      cost.val = math.eval 'basecost * stat * stat2',
-        basecost:cost.val
-        stat:@stat 'cost', 1
-        stat2:@stat "cost.#{cost.unit.unittype.name}", 1
+      cost.val = math.multiply(math.multiply(cost.val, @stat('cost', 1)), @stat "cost.#{cost.unit.unittype.name}", 1)
       return cost
 
   # speed at which other units are producing this unit.
@@ -287,12 +281,12 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect) -> class Unit
     for parent in @_parents()
       prod = parent.totalProduction()
       util.assert prod[@name]?, "velocity: a unit's parent doesn't produce that unit?", @name, parent.name
-      sum = math.eval 'sum + prod', sum:sum, prod:prod[@name]
+      sum = math.add(sum, prod[@name])
     return sum
 
   isVelocityConstant: ->
     for parent in @_parents()
-      if math.eval 'v > 0', {v:parent.velocity()}
+      if parent.velocity().greaterThan(0)
         return false
     return true
 
