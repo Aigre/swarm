@@ -63,7 +63,7 @@ angular.module('swarmApp').factory 'Upgrade', (util, Effect, $log) -> class Upgr
   _totalCost: (count=@count() + @unit.stat 'upgradecost', 0)->
     _.map @cost, (cost) =>
       total = _.clone cost
-      total.val = math.eval 'total * (factor ^ count))',
+      total.val = math.eval 'total * (factor ^ count)',
         total:total.val, factor:total.factor, count:count
       return total
   sumCost: (num, startCount) ->
