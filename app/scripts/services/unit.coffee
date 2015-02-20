@@ -157,20 +157,67 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect, ProducerPath, UN
 
   estimateSecsUntilEarned: (num) ->
     # result is *not* a bigdecimal!
-    remaining = new Decimal(num).minus @count()
+    count = @count()
+    remaining = new Decimal(num).minus count
     if remaining.lessThanOrEqualTo 0
       return 0
     velocity = @velocity()
-    if velocity.lessThanOrEqualTo 0
-      return Infinity
-    secs = remaining.dividedBy velocity
-    # verify it's linear
-    #estimate = @_countInSecsFromNow secs
-    #if util.isFloatEqual num, estimate, 0.1
-    #  return secs
-    #throw new Error 'nonlinear estimation not yet implemented'
-    # fuck it. TODO nonlinear estimation
-    return secs.toNumber()
+    console.log 'estimatesecsuntilearned', num+'', count+'', velocity+''
+    if velocity.greaterThan 0
+      secs = remaining.dividedBy(velocity).toNumber()
+      console.log 'estimatesecsuntilearned1', num+'', @_countInSecsFromReified(Math.ceil secs + @game.diffSeconds())+'', secs+''
+      # common case: constant velocity (for parents too). we're done.
+      if @_countInSecsFromReified(Math.ceil secs + @game.diffSeconds()).greaterThanOrEqualTo num
+        console.log 'linear!', secs
+        return secs
+    else
+      # we can't even estimate a starting point? Pretend a second's passed and try again.
+      count2 = @_countInSecsFromNow 1
+      if count2.equals count
+        # no parents producing things - velocity is really zero
+        return Infinity
+      secs = remaining.dividedBy(count2.minus count).toNumber()
+    # nonlinear - use a root finder
+    return @estimateSecsUntilEarnedBisection remaining, secs
+
+  estimateSecsUntilEarnedBisection: (num, maxSec) ->
+    console.log 'bisecting'
+    # https://en.wikipedia.org/wiki/Bisection_method#Algorithm
+    f = (sec) =>
+      num.minus @_countInSecsFromNow midSec
+    isInThresh = (min, max) ->
+      # Different thresholds for different search spaces
+      # (We don't care about seconds if the result's in days)
+      if min < 60 * 60
+        thresh = 1
+      else if min < 60 * 60 * 24
+        thresh = 60
+      else
+        thresh = 60 * 60
+      return (max - min) / 2 < thresh
+
+    minSec = 0
+    maxSec = Math.ceil maxSec #this keeps precision reasonable for decimal.js, and works because we have 1 sec tolerance
+    minVal = f minSec
+    maxVal = f maxSec
+    iteration = 0
+    while iteration < 20
+      midSec = (maxSec + minSec) / 2
+      midSec = Math.floor midSec #this keeps precision reasonable for decimal.js, and works because we have 1 sec tolerance
+      midVal = f midSec
+      $log.debug "bisection estimate: iteration #{iteration}, midsec #{midSec}, midVal #{midVal}"
+      #console.log "bisection estimate: iteration #{iteration}, midsec #{midSec}, midVal #{midVal}"
+      if midVal.isZero() or isInThresh minSec, maxSec
+        return midSec
+      iteration += 1
+      if (midVal.isNegative()) == (minVal.isNegative())
+        minSec = midSec
+        minVal = f minSec
+      else
+        maxSec = midSec
+        maxVal = f maxSec
+    # too many iterations
+    return midSec
 
   count: ->
     return @game.cache.unitCount[@name] ?= @_countInSecsFromNow 0
@@ -303,6 +350,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect, ProducerPath, UN
         sum = sum.plus prod[@name]
       return Decimal.min UNIT_LIMIT, sum
 
+  # TODO not correct - consider velocity of meat with 0 drones and 1 queen
   isVelocityConstant: ->
     for parent in @_parents()
       if parent.velocity() > 0

@@ -17,10 +17,11 @@ angular.module('swarmApp').directive 'unit', ($log, game, commands, options, uti
     scope.options = options
 
     formatDuration = (estimate) ->
-    scope.estimtateUpgradeSecs = (upgrade) ->
+    scope.estimateUpgradeSecs = (upgrade) ->
       estimate = upgrade.estimateSecsUntilBuyable()
       #util.utcdoy 1000 * secs
       if isFinite estimate.val
+        return moment.duration(estimate.val, 'seconds')
         nonlinear = if not (estimate.unit?.isVelocityConstant?() ? true) then 'less than ' else ''
         secs = moment.duration(estimate.val, 'seconds').humanize()
         if /\ years$/.test secs

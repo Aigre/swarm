@@ -122,7 +122,7 @@
 
         <div class="progress" style="margin-bottom:0">
           <div class="progress-bar" role="progressbar" aria-valuenow="{{upgrade.costMetPercent().times(1000)}}" aria-valuemin="0" aria-valuemax="1000" ng-style="{width:upgrade.costMetPercent().times(100)+'%'}">
-            {{upgrade.costMetPercent()|percent:{floor:true} }}{{estimtateUpgradeSecs(upgrade)}}
+            {{upgrade.costMetPercent()|percent:{floor:true} }}{{estimateUpgradeSecs(upgrade) | duration}}
           </div>
         </div>
         <buyupgrade upgrade="upgrade"></buyupgrade>

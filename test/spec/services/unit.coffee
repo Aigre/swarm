@@ -341,3 +341,19 @@ describe 'Service: unit', ->
   it 'caps units globally and exceeds the JS max', ->
     game = mkgame {meat:'1e9999999'}
     expect(game.unit('meat').count()+'').toBe '1e+100000'
+
+  it 'does nonlinear estimates with nonzero velocity', ->
+    game = mkgame {meat:0, drone:1, queen:1}
+    game.now = new Date 2000
+    expect(game.unit('meat')._countInSecsFromNow(8).toNumber()).toBe 110
+    expect(Math.abs game.unit('meat').estimateSecsUntilEarned(110) - 8).toBeLessThan 1
+    expect(game.unit('meat')._countInSecsFromNow(9).toNumber()).toBe 132
+    expect(Math.abs game.unit('meat').estimateSecsUntilEarned(132) - 9).toBeLessThan 1
+
+  it 'does nonlinear estimates with zero velocity', ->
+    game = mkgame {meat:0, queen:1}
+    game.now = new Date 2000
+    expect(game.unit('meat')._countInSecsFromNow(8).toNumber()).toBe 100
+    expect(Math.abs game.unit('meat').estimateSecsUntilEarned(100) - 8).toBeLessThan 1
+    expect(game.unit('meat')._countInSecsFromNow(9).toNumber()).toBe 121
+    expect(Math.abs game.unit('meat').estimateSecsUntilEarned(121) - 9).toBeLessThan 1
