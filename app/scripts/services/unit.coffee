@@ -26,6 +26,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect, ProducerPath, UN
     @name = @unittype.name
     @suffix = ''
     @affectedBy = []
+    @type = @unittype # start transitioning now
   _init: ->
     # copy all the inter-unittype references, replacing the type references with units
     @_producerPathList = _.map @unittype.producerPathList, (path) =>
@@ -378,7 +379,7 @@ angular.module('swarmApp').factory 'Unit', (util, $log, Effect, ProducerPath, UN
       return stats
 
   statistics: ->
-    @game.session.statistics.byUnit[@name] ? {}
+    @game.session.statistics?.byUnit?[@name] ? {}
 
   # TODO centralize url handling
   url: ->
